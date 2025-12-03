@@ -1,4 +1,4 @@
-# hackit-hackathon
+# hackit-hackathon - חברי הקבוצה: בר פישלביץ, לינוי כהן, רותם רונן
 Group project for timing attacks: Flask website with a delayed password check plus a Python script for hacking the website and for hacking other websites.
 
 בכל שעה נבחרת אות אקראית חדשה, והיא משמשת כאות המפתח בסיסמא שהמשתמש שולח.
