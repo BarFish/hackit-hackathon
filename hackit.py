@@ -66,7 +66,7 @@ def find_cur_letter(url, pool, padding_length):
         last_key_letter = current_letter
         check_hour_change()
         if last_key_letter != current_letter:
-            return find_cur_letter(url, pool, padding_length)
+            return current_letter
         
         test_url = url + ch * padding_length
         t = timeit(test_url, REPEAT_CHECK)
