@@ -11,3 +11,6 @@ Group project for timing attacks: Flask website with a delayed password check pl
 
 ## To install requirements:
 pip install -r requirements.txt
+
+## If you clone the repo, you can use the exiting venv:
+In cmd: venv\Scripts\activate
