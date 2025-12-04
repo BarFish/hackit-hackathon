@@ -1,7 +1,7 @@
 from statistics import mean
 import requests
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 URL = "https://barfishilev.pythonanywhere.com/"
 REPEAT_CHECK = 8
@@ -99,6 +99,12 @@ def check_hour_change():
     global last_day, last_hour, current_letter
 
     now = datetime.now()
+
+    if now.minute >= 58:
+        print(f"Hour will change in ~2 minutes. Waiting...")
+        time.sleep(120)
+        now = datetime.now()
+
     day = now.day
     hour = now.hour
 
