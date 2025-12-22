@@ -92,4 +92,5 @@ def get_chars_data(log_filename):
 
 if __name__ == '__main__':
     get_data(URL, POOL, MAX_PASSWORD_LENGTH, PADDING_LENGTH)
+    # get_chars_data("new_data")
     
